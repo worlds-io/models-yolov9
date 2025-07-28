@@ -267,7 +267,7 @@ class SimpleLogger(Logger):
         pass
 
 
-def setup(cfg: Config):
+def setup(cfg: Config, early_stopping_patience: Optional[int]=None):
     save_path = validate_log_directory(cfg, cfg.name)
 
     progress, loggers = [], [SimpleLogger()]
@@ -275,7 +275,10 @@ def setup(cfg: Config):
     if hasattr(cfg.task, "ema") and cfg.task.ema.enable:
         progress.append(EMA(cfg.task.ema.decay))
 
-    progress.append(EarlyStopping('Loss/BoxLoss_epoch', mode='min', patience=5))
+    if early_stopping_patience is None:
+        early_stopping_patience = 5
+
+    progress.append(EarlyStopping('Loss/BoxLoss_epoch', mode='min', patience=early_stopping_patience))
     progress.append(EpochLogger())
 
     coco_logger = logging.getLogger("faster_coco_eval.core.cocoeval")
