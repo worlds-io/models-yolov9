@@ -21,11 +21,14 @@ def main(cfg: Config):
     if 'DATASET_OVERRIDE_CONFIG' in os.environ:
         cfg.dataset = OmegaConf.load(os.environ['DATASET_OVERRIDE_CONFIG'])
 
-    callbacks, loggers, save_path = setup(cfg)
+    early_stopping_patience = getattr(cfg.task, 'early_stopping_patience', None)
+    epochs = getattr(cfg.task, 'epoch', None)
+
+    callbacks, loggers, save_path = setup(cfg, early_stopping_patience=early_stopping_patience)
 
     trainer = Trainer(
         accelerator='auto',
-        max_epochs=getattr(cfg.task, 'epoch', None),
+        max_epochs=epochs,
         precision='16-mixed',
         logger=loggers,
         callbacks=callbacks,
