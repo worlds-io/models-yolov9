@@ -129,6 +129,7 @@ class ValidationConfig:
 class TrainConfig:
     task: str
     epoch: int
+    early_stopping_patience: int
     data: DataConfig
     optimizer: OptimizerConfig
     loss: LossConfig
