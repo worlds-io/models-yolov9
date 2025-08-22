@@ -278,7 +278,7 @@ def setup(cfg: Config, early_stopping_patience: Optional[int]=None):
     if early_stopping_patience is None:
         early_stopping_patience = 5
 
-    progress.append(EarlyStopping('Loss/BoxLoss_epoch', mode='min', patience=early_stopping_patience))
+    progress.append(EarlyStopping('map', mode='max', patience=early_stopping_patience))
     progress.append(EpochLogger())
 
     coco_logger = logging.getLogger("faster_coco_eval.core.cocoeval")
