@@ -13,16 +13,16 @@ data:
   pin_memory: True
   data_augment:
     Mosaic: 0.25
-    # MixUp: 0.15
+    MixUp: 0.15
     HorizontalFlip: 0.5
-    RandomCrop: 0.9
+    RandomCrop: 0.75
     RemoveOutliers: 1e-8
 
 optimizer:
   type: SGD
   args:
     lr: 0.003
-    weight_decay: 0.0005
+    weight_decay: 0.00065
     momentum: 0.937
     nesterov: true
 
@@ -50,5 +50,5 @@ scheduler:
     end_factor: 0.01
 
 ema:
-  enable: true
+  enable: false
   decay: 0.995
