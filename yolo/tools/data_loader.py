@@ -31,10 +31,9 @@ class YoloDataset(Dataset):
         phase_name = dataset_cfg.get(phase, phase)
         self.batch_size = data_cfg.batch_size
         self.dynamic_shape = getattr(data_cfg, "dynamic_shape", False)
-        self.base_size = mean(self.image_size)
 
         transforms = [eval(aug)(prob) for aug, prob in augment_cfg.items()]
-        self.transform = AugmentationComposer(transforms, self.image_size, self.base_size)
+        self.transform = AugmentationComposer(transforms, self.image_size)
         self.transform.get_more_data = self.get_more_data
         self.img_paths, self.bboxes, self.ratios = tensorlize(self.load_data(Path(dataset_cfg.path), phase_name))
 
@@ -165,9 +164,10 @@ class YoloDataset(Dataset):
         """Update image size based on dynamic shape and batch settings."""
         batch_start_idx = (idx // self.batch_size) * self.batch_size
         image_ratio = self.ratios[batch_start_idx].clip(1 / 3, 3)
-        shift = ((self.base_size / 32 * (image_ratio - 1)) // (image_ratio + 1)) * 32
+        shift_x = ((self.image_size[0] / 32 * (image_ratio - 1)) // (image_ratio + 1)) * 32
+        shift_y = ((self.image_size[1] / 32 * (image_ratio - 1)) // (image_ratio + 1)) * 32
 
-        self.image_size = [int(self.base_size + shift), int(self.base_size - shift)]
+        self.image_size = [int(self.image_size[0] + shift_x), int(self.image_size[1] - shift_y)]
         self.transform.pad_resize.set_size(self.image_size)
 
     def __getitem__(self, idx) -> Tuple[Image.Image, Tensor, Tensor, List[str]]:
