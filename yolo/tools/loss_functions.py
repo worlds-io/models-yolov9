@@ -120,15 +120,24 @@ class DualLoss:
     def __call__(
         self, aux_predicts: List[Tensor], main_predicts: List[Tensor], targets: Tensor
     ) -> Tuple[Tensor, Dict[str, float]]:
-        # TODO: Need Refactor this region, make it flexible!
-        aux_iou, aux_dfl, aux_cls = self.loss(aux_predicts, targets)
-        main_iou, main_dfl, main_cls = self.loss(main_predicts, targets)
+        if aux_predicts is None:
+            main_iou, main_dfl, main_cls = self.loss(main_predicts, targets)
 
-        total_loss = [
-            self.iou_rate * (aux_iou * self.aux_rate + main_iou),
-            self.dfl_rate * (aux_dfl * self.aux_rate + main_dfl),
-            self.cls_rate * (aux_cls * self.aux_rate + main_cls),
-        ]
+            total_loss = [
+                self.iou_rate * main_iou,
+                self.dfl_rate * main_dfl,
+                self.cls_rate * main_cls,
+                ]
+        else:
+            aux_iou, aux_dfl, aux_cls = self.loss(aux_predicts, targets)
+            main_iou, main_dfl, main_cls = self.loss(main_predicts, targets)
+
+            total_loss = [
+                self.iou_rate * (aux_iou * self.aux_rate + main_iou),
+                self.dfl_rate * (aux_dfl * self.aux_rate + main_dfl),
+                self.cls_rate * (aux_cls * self.aux_rate + main_cls),
+            ]
+
         loss_dict = {
             f"Loss/{name}Loss": value.detach().item() for name, value in zip(["Box", "DFL", "BCE"], total_loss)
         }

@@ -88,7 +88,7 @@ class TrainModel(ValidateModel):
         lr_dict = self.trainer.optimizers[0].next_batch()
         batch_size, images, targets, *_ = batch
         predicts = self(images)
-        aux_predicts = self.vec2box(predicts["AUX"])
+        aux_predicts = self.vec2box(predicts["AUX"]) if "AUX" in predicts else None
         main_predicts = self.vec2box(predicts["Main"])
         loss, loss_item = self.loss_fn(aux_predicts, main_predicts, targets)
         self.log_dict(
