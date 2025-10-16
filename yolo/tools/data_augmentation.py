@@ -198,7 +198,7 @@ class RandomPad:
             scale = np.random.uniform(1.25, 2)
             padded_height, padded_width = int(original_height * scale), int(original_width * scale)
 
-            padded_image = Image.new("RGB", (2 * padded_width, padded_height), (0, 0, 0))
+            padded_image = Image.new("RGB", (padded_width, padded_height), (0, 0, 0))
 
             top = torch.randint(0, padded_height - original_height, (1,)).item()
             left = torch.randint(0, padded_width - original_width, (1,)).item()
