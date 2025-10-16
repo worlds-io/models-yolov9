@@ -195,8 +195,7 @@ class RandomPad:
     def __call__(self, image, boxes):
         if torch.rand(1) < self.prob:
             original_width, original_height = image.size
-            scale = np.random.uniform(1.25, 2)
-            padded_height, padded_width = int(original_height * scale), int(original_width * scale)
+            padded_height, padded_width = int(original_height * np.random.uniform(1.25, 2)), int(original_width * np.random.uniform(1.25, 2))
 
             padded_image = Image.new("RGB", (padded_width, padded_height), (0, 0, 0))
 
