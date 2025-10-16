@@ -68,8 +68,16 @@ class PadAndResize:
 
         resized_image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
-        pad_left = 0  # (self.target_width - new_width) // 2
-        pad_top = 0  # (self.target_height - new_height) // 2
+        if self.target_width > new_width:
+            pad_left = np.random.randint(0, self.target_width - new_width)
+        else:
+            pad_left = 0
+
+        if self.target_height > new_height:
+            pad_top = np.random.randint(0, self.target_height - new_height)
+        else:
+            pad_top = 0
+
         padded_image = Image.new("RGB", (self.target_width, self.target_height), self.background_color)
         padded_image.paste(resized_image, (pad_left, pad_top))
 
@@ -144,7 +152,7 @@ class MixUp:
 
 
 class RandomCrop:
-    """Randomly crops the image to half its size along with adjusting the bounding boxes."""
+    """Randomly crops the image along with adjusting the bounding boxes."""
 
     def __init__(self, prob=0.5):
         """
@@ -156,7 +164,7 @@ class RandomCrop:
     def __call__(self, image, boxes):
         if torch.rand(1) < self.prob:
             original_width, original_height = image.size
-            crop_height, crop_width = original_height // 2, original_width // 2
+            crop_height, crop_width = int(original_height / np.random.uniform(1.5, 4)), int(original_width / np.random.uniform(1.5, 4))
             top = torch.randint(0, original_height - crop_height + 1, (1,)).item()
             left = torch.randint(0, original_width - crop_width + 1, (1,)).item()
 
@@ -170,5 +178,36 @@ class RandomCrop:
 
             boxes[:, [1, 3]] /= crop_width
             boxes[:, [2, 4]] /= crop_height
+
+        return image, boxes
+
+
+class RandomPad:
+    """Randomly pads the image along with adjusting the bounding boxes."""
+
+    def __init__(self, prob=0.5):
+        """
+        Args:
+            prob (float): Probability of applying the pad.
+        """
+        self.prob = prob
+
+    def __call__(self, image, boxes):
+        if torch.rand(1) < self.prob:
+            original_width, original_height = image.size
+            scale = np.random.uniform(1.25, 2)
+            padded_height, padded_width = int(original_height * scale), int(original_width * scale)
+
+            padded_image = Image.new("RGB", (2 * padded_width, padded_height), (0, 0, 0))
+
+            top = torch.randint(0, padded_height - original_height, (1,)).item()
+            left = torch.randint(0, padded_width - original_width, (1,)).item()
+
+            padded_image.paste(image, (top, left))
+
+            boxes[:, [1, 3]] += left
+            boxes[:, [2, 4]] += top
+
+            image = padded_image
 
         return image, boxes

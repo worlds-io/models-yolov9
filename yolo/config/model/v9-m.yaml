@@ -76,56 +76,56 @@ model:
         tags: Main
         output: True
 
-#  auxiliary:
-#    - CBLinear:
-#        source: B3
-#        args: {out_channels: [240]}
-#        tags: R3
-#    - CBLinear:
-#        source: B4
-#        args: {out_channels: [240, 360]}
-#        tags: R4
-#    - CBLinear:
-#        source: B5
-#        args: {out_channels: [240, 360, 480]}
-#        tags: R5
-#
-#    - Conv:
-#        args: {out_channels: 32, kernel_size: 3, stride: 2}
-#        source: 0
-#    - Conv:
-#        args: {out_channels: 64, kernel_size: 3, stride: 2}
-#    - RepNCSPELAN:
-#        args: {out_channels: 128, part_channels: 128}
-#
-#    - AConv:
-#        args: {out_channels: 240}
-#    - CBFuse:
-#        source: [R3, R4, R5, -1]
-#        args: {index: [0, 0, 0]}
-#    - RepNCSPELAN:
-#        args: {out_channels: 240, part_channels: 240}
-#        tags: A3
-#
-#    - AConv:
-#        args: {out_channels: 360}
-#    - CBFuse:
-#        source: [R4, R5, -1]
-#        args: {index: [1, 1]}
-#    - RepNCSPELAN:
-#        args: {out_channels: 360, part_channels: 360}
-#        tags: A4
-#
-#    - AConv:
-#        args: {out_channels: 480}
-#    - CBFuse:
-#        source: [R5, -1]
-#        args: {index: [2]}
-#    - RepNCSPELAN:
-#        args: {out_channels: 480, part_channels: 480}
-#        tags: A5
-#
-#    - MultiheadDetection:
-#        source: [A3, A4, A5]
-#        tags: AUX
-#        output: True
+  auxiliary:
+    - CBLinear:
+        source: B3
+        args: {out_channels: [240]}
+        tags: R3
+    - CBLinear:
+        source: B4
+        args: {out_channels: [240, 360]}
+        tags: R4
+    - CBLinear:
+        source: B5
+        args: {out_channels: [240, 360, 480]}
+        tags: R5
+
+    - Conv:
+        args: {out_channels: 32, kernel_size: 3, stride: 2}
+        source: 0
+    - Conv:
+        args: {out_channels: 64, kernel_size: 3, stride: 2}
+    - RepNCSPELAN:
+        args: {out_channels: 128, part_channels: 128}
+
+    - AConv:
+        args: {out_channels: 240}
+    - CBFuse:
+        source: [R3, R4, R5, -1]
+        args: {index: [0, 0, 0]}
+    - RepNCSPELAN:
+        args: {out_channels: 240, part_channels: 240}
+        tags: A3
+
+    - AConv:
+        args: {out_channels: 360}
+    - CBFuse:
+        source: [R4, R5, -1]
+        args: {index: [1, 1]}
+    - RepNCSPELAN:
+        args: {out_channels: 360, part_channels: 360}
+        tags: A4
+
+    - AConv:
+        args: {out_channels: 480}
+    - CBFuse:
+        source: [R5, -1]
+        args: {index: [2]}
+    - RepNCSPELAN:
+        args: {out_channels: 480, part_channels: 480}
+        tags: A5
+
+    - MultiheadDetection:
+        source: [A3, A4, A5]
+        tags: AUX
+        output: True
