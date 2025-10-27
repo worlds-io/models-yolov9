@@ -13,14 +13,14 @@ data:
   pin_memory: True
   data_augment:
     HorizontalFlip: 0.5
+    # RandomPad: 0.25
     RandomCrop: 0.25
-    RandomPad: 0.25
     RemoveOutliers: 1e-8
 
 optimizer:
   type: SGD
   args:
-    lr: 0.004
+    lr: 0.003
     weight_decay: 0.0005
     momentum: 0.937
     nesterov: true
