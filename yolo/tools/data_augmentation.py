@@ -68,15 +68,8 @@ class PadAndResize:
 
         resized_image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
-        if self.target_width > new_width:
-            pad_left = np.random.randint(0, self.target_width - new_width)
-        else:
-            pad_left = 0
-
-        if self.target_height > new_height:
-            pad_top = np.random.randint(0, self.target_height - new_height)
-        else:
-            pad_top = 0
+        pad_left = 0  # (self.target_width - new_width) // 2
+        pad_top = 0  # (self.target_height - new_height) // 2
 
         padded_image = Image.new("RGB", (self.target_width, self.target_height), self.background_color)
         padded_image.paste(resized_image, (pad_left, pad_top))
