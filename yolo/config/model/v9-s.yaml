@@ -96,37 +96,37 @@ model:
         tags: Main
         output: True
 
-  auxiliary:
-    - SPPELAN:
-        source: B5
-        args: {out_channels: 256}
-        tags: A5
-
-    - UpSample:
-        args: {scale_factor: 2, mode: nearest}
-    - Concat:
-        source: [-1, B4]
-
-    - RepNCSPELAN:
-        args:
-            out_channels: 192
-            part_channels: 192
-            csp_args: {repeat_num: 3}
-        tags: A4
-
-    - UpSample:
-        args: {scale_factor: 2, mode: nearest}
-    - Concat:
-        source: [-1, B3]
-
-    - RepNCSPELAN:
-        args:
-            out_channels: 128
-            part_channels: 128
-            csp_args: {repeat_num: 3}
-        tags: A3
-
-    - MultiheadDetection:
-        source: [A3, A4, A5]
-        tags: AUX
-        output: True
+#  auxiliary:
+#    - SPPELAN:
+#        source: B5
+#        args: {out_channels: 256}
+#        tags: A5
+#
+#    - UpSample:
+#        args: {scale_factor: 2, mode: nearest}
+#    - Concat:
+#        source: [-1, B4]
+#
+#    - RepNCSPELAN:
+#        args:
+#            out_channels: 192
+#            part_channels: 192
+#            csp_args: {repeat_num: 3}
+#        tags: A4
+#
+#    - UpSample:
+#        args: {scale_factor: 2, mode: nearest}
+#    - Concat:
+#        source: [-1, B3]
+#
+#    - RepNCSPELAN:
+#        args:
+#            out_channels: 128
+#            part_channels: 128
+#            csp_args: {repeat_num: 3}
+#        tags: A3
+#
+#    - MultiheadDetection:
+#        source: [A3, A4, A5]
+#        tags: AUX
+#        output: True

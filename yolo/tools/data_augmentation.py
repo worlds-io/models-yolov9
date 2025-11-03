@@ -1,5 +1,6 @@
 from typing import List
 
+import cv2
 import numpy as np
 import torch
 from PIL import Image
@@ -188,7 +189,7 @@ class RandomPad:
     def __call__(self, image, boxes):
         if torch.rand(1) < self.prob:
             original_width, original_height = image.size
-            padded_height, padded_width = int(original_height * np.random.uniform(1.25, 2)), int(original_width * np.random.uniform(1.25, 2))
+            padded_height, padded_width = int(original_height * np.random.uniform(1.125, 1.375)), int(original_width * np.random.uniform(1.125, 1.375))
 
             padded_image = Image.new("RGB", (padded_width, padded_height), (0, 0, 0))
 
@@ -201,5 +202,106 @@ class RandomPad:
             boxes[:, [2, 4]] += top
 
             image = padded_image
+
+        return image, boxes
+
+
+class Colorspace:
+    def __init__(self, prob=0.5):
+        self.prob = prob
+
+    def __call__(self, image, boxes, hue=10, saturation=1.5, exposure=1.5):
+        if torch.rand(1) < self.prob:
+            image = np.array(image)
+
+            dhue        = np.random.uniform(-hue,         hue)
+            dsaturation = np.random.uniform(1/saturation, saturation)
+            dexposure   = np.random.uniform(1/exposure,   1)
+
+            hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV).astype(np.float64)
+            hsv_image[:, :, 1] *= dsaturation
+            hsv_image[:, :, 2] *= dexposure
+
+            hsv_image[:, :, 0] += dhue
+            hsv_image[:, :, 0] -= (hsv_image[:, :, 0] > 180) * 180
+            hsv_image[:, :, 0] += (hsv_image[:, :, 0] < 0)   * 180
+
+            image = cv2.cvtColor(hsv_image.astype(np.uint8), cv2.COLOR_HSV2RGB)
+            image = np.clip(image, 0, 255)
+
+            image = Image.fromarray(image)
+
+        return image, boxes
+
+
+class Occlude:
+    def __init__(self, prob=0.5):
+        self.prob = prob
+
+    def __call__(self, image, boxes, per_box_probability=0.5, min_occlusion_width=0.25, max_occlusion_width=0.65, min_occlusion_height=0.25, max_occlusion_height=0.65):
+        if torch.rand(1) < self.prob:
+            image = np.array(image)
+
+            for i in range(boxes.shape[0]):
+                if torch.rand(1) < per_box_probability:
+                    x1, y1, x2, y2 = boxes[i, 1:5]
+
+                    width  = x2 - x1
+                    height = y2 - y1
+
+                    min_width  = int(min_occlusion_width  * width)
+                    max_width  = int(max_occlusion_width  * width)
+                    min_height = int(min_occlusion_height * height)
+                    max_height = int(max_occlusion_height * height)
+
+                    if (min_width < max_width) and (min_height < max_height):
+                        w = np.random.randint(min_width,  max_width)
+                        h = np.random.randint(min_height, max_height)
+
+                        max_x = x2 - w
+                        max_y = y2 - h
+
+                        if (x1 < max_x) and (y1 < max_y):
+                            x = np.random.randint(x1, max_x)
+                            y = np.random.randint(y1, max_y)
+
+                            image[y:y+h, x:x+w, ...] = np.random.random(image[y:y+h, x:x+w, ...].shape) * 255
+
+            image = Image.fromarray(image)
+
+        return image, boxes
+
+
+class Blur:
+    def __init__(self, prob=0.5):
+        self.prob = prob
+
+    def __call__(self, image, boxes):
+        if torch.rand(1) < self.prob:
+            image = np.array(image)
+
+            diameter    = np.random.randint(7, 13)
+            sigma_color = np.random.randint(13, 55)
+            sigma_space = np.random.randint(13, 55)
+
+            image = cv2.bilateralFilter(image.astype(np.uint8), diameter, sigma_color, sigma_space)
+            image = Image.fromarray(image)
+
+        return image, boxes
+
+
+class JPEG:
+    def __init__(self, prob=0.5):
+        self.prob = prob
+
+    def __call__(self, image, boxes, min_quality=15, max_quality=70):
+        if torch.rand(1) < self.prob:
+            image = np.array(image)
+
+            quality = np.random.randint(min_quality, max_quality)
+            _, encoded_image = cv2.imencode('.jpg', image.astype(np.uint8), [cv2.IMWRITE_JPEG_QUALITY, quality])
+
+            image = cv2.imdecode(encoded_image, cv2.IMREAD_UNCHANGED)
+            image = Image.fromarray(image)
 
         return image, boxes
