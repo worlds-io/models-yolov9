@@ -12,15 +12,20 @@ data:
   shuffle: True
   pin_memory: True
   data_augment:
+    Occlude: 0.125
+    Colorspace: 0.5
     HorizontalFlip: 0.5
-    RandomCrop: 0.75
+    Blur: 0.25
+    JPEG: 0.5
+    RandomPad: 0.125
+    RandomCrop: 0.25
     RemoveOutliers: 1e-8
 
 optimizer:
   type: SGD
   args:
     lr: 0.005
-    weight_decay: 0.00075
+    weight_decay: 0.0005
     momentum: 0.937
     nesterov: true
 
@@ -48,5 +53,5 @@ scheduler:
     end_factor: 0.01
 
 ema:
-  enable: false
+  enable: true
   decay: 0.995
