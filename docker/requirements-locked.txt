@@ -1,4 +1,4 @@
-torch==2.2.1
+torch==2.8.0
 torchvision==0.17.1
 setuptools>=60.0
 numpy==1.23.5
