@@ -201,9 +201,6 @@ class RandomPad:
             boxes[:, [1, 3]] = boxes[:, [1, 3]] * original_width + left
             boxes[:, [2, 4]] = boxes[:, [2, 4]] * original_height + top
 
-            boxes[:, [1, 3]] = boxes[:, [1, 3]].clamp(0, padded_width)
-            boxes[:, [2, 4]] = boxes[:, [2, 4]].clamp(0, padded_height)
-
             boxes[:, [1, 3]] /= padded_width
             boxes[:, [2, 4]] /= padded_height
 
