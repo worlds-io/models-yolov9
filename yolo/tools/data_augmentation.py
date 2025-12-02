@@ -196,7 +196,7 @@ class RandomPad:
             top = torch.randint(0, padded_height - original_height, (1,)).item()
             left = torch.randint(0, padded_width - original_width, (1,)).item()
 
-            padded_image.paste(image, (top, left))
+            padded_image.paste(image, (left, top))
 
             boxes[:, [1, 3]] += left
             boxes[:, [2, 4]] += top
