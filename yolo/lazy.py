@@ -1,3 +1,7 @@
+# disable OpenCV multithreading, as it can misbehave when used with PyTorch worker forking
+import cv2
+cv2.setNumThreads(0)
+
 import glob
 import os
 import sys
