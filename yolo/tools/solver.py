@@ -51,7 +51,7 @@ class ValidateModel(BaseModel):
         self.metric.update(
             [to_metrics_format(predict) for predict in predicts], [to_metrics_format(target) for target in targets]
         )
-        return predicts
+        return None
 
     def on_validation_epoch_end(self):
         epoch_metrics = self.metric.compute()
