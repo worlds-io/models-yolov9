@@ -95,7 +95,7 @@ class TrainModel(ValidateModel):
             loss_item,
             prog_bar=True,
             on_step=True,
-            on_epoch=True,
+            on_epoch=False,
             batch_size=batch_size,
             rank_zero_only=True,
         )

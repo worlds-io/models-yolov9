@@ -2,9 +2,6 @@
 import cv2
 cv2.setNumThreads(0)
 
-import torch.multiprocessing as mp
-mp.set_start_method('spawn', force=True)
-
 import glob
 import os
 import sys
