@@ -103,9 +103,16 @@ def scale_segmentation(
         category_id = anno["category_id"]
         if "segmentation" in anno:
             seg_list = [item for sublist in anno["segmentation"] for item in sublist]
-        elif "bbox" in anno:
-            x, y, width, height = anno["bbox"]
+        elif ("bbox" in anno) and (anno["bbox"] is not None):
+            try:
+                x, y, width, height = anno["bbox"]
+            except Exception as e:
+                print('Failed to extract bounds from annotation, skipping:', e)
+                continue
+
             seg_list = [x, y, x + width, y, x + width, y + height, x, y + height]
+        else:
+            continue
 
         scaled_seg_data = (
             np.array(seg_list).reshape(-1, 2) / [w, h]
