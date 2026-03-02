@@ -27,6 +27,7 @@ def main(cfg: Config):
 
     early_stopping_patience = getattr(cfg.task, 'early_stopping_patience', None)
     epochs = getattr(cfg.task, 'epoch', None)
+    batch_size = getattr(cfg.task.data, 'batch_size', 16)
 
     callbacks, loggers, save_path = setup(cfg, early_stopping_patience=early_stopping_patience)
 
@@ -43,6 +44,7 @@ def main(cfg: Config):
         deterministic=True,
         enable_progress_bar=False,
         default_root_dir=save_path,
+        limit_val_batches=5000 // batch_size
     )
 
     if cfg.task.task == 'train':
