@@ -9,6 +9,6 @@ data:
   data_augment: {}
   dynamic_shape: False
 nms:
-  min_confidence: 0.01
+  min_confidence: 0.0001
   min_iou: 0.45
   max_bbox: 300
