@@ -12,6 +12,7 @@ data:
   shuffle: True
   pin_memory: True
   data_augment:
+    Occlude: 0.125
     Colorspace: 0.5
     HorizontalFlip: 0.5
     JPEG: 0.25
