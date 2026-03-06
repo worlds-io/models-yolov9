@@ -14,6 +14,7 @@ from omegaconf import OmegaConf
 
 # run a quick autotuning pass at the start of training so that we use the optimal GPU kernels for the model
 torch.backends.cudnn.benchmark = True
+torch.set_float32_matmul_precision('high')
 
 project_root = Path(__file__).resolve().parent.parent
 sys.path.append(str(project_root))
