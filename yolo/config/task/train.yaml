@@ -12,11 +12,9 @@ data:
   shuffle: True
   pin_memory: True
   data_augment:
-    Occlude: 0.125
     Colorspace: 0.5
     HorizontalFlip: 0.5
-    Blur: 0.25
-    JPEG: 0.5
+    JPEG: 0.25
     RandomPad: 0.125
     RandomCrop: 0.25
     RemoveOutliers: 1e-8
@@ -24,7 +22,7 @@ data:
 optimizer:
   type: SGD
   args:
-    lr: 0.005
+    lr: 0.0005
     weight_decay: 0.0005
     momentum: 0.937
     nesterov: true
@@ -44,14 +42,14 @@ loss:
       cls: 0.5
 
 scheduler:
-  type: LinearLR
+  type: CosineAnnealingLR
   warmup:
     epochs: 1.0
   args:
-    total_iters: ${task.epoch}
-    start_factor: 1
-    end_factor: 0.01
+    T_max: ${task.epoch}
+    eta_min: 0.000005
 
 ema:
   enable: true
-  decay: 0.995
+  decay: 0.9999
+  tau: 500

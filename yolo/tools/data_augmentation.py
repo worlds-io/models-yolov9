@@ -158,7 +158,7 @@ class RandomCrop:
     def __call__(self, image, boxes):
         if torch.rand(1) < self.prob:
             original_width, original_height = image.size
-            crop_height, crop_width = int(original_height / np.random.uniform(1.5, 4)), int(original_width / np.random.uniform(1.5, 4))
+            crop_height, crop_width = int(original_height / np.random.uniform(1.0, 1.5)), int(original_width / np.random.uniform(1.0, 1.5))
             top = torch.randint(0, original_height - crop_height + 1, (1,)).item()
             left = torch.randint(0, original_width - crop_width + 1, (1,)).item()
 

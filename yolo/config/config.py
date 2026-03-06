@@ -100,6 +100,7 @@ class SchedulerConfig:
 class EMAConfig:
     enable: bool
     decay: float
+    tau: Optional[float]
 
 
 @dataclass

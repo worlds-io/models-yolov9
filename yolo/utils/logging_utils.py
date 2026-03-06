@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 import numpy as np
 import torch
 from lightning import LightningModule, Trainer, seed_everything
-from lightning.pytorch.callbacks import Callback, EarlyStopping, RichModelSummary, RichProgressBar
+from lightning.pytorch.callbacks import Callback, EarlyStopping, ModelCheckpoint, RichModelSummary, RichProgressBar
 from lightning.pytorch.callbacks.progress.rich_progress import CustomProgress
 from lightning.pytorch.utilities import rank_zero_only
 from omegaconf import ListConfig
@@ -273,13 +273,15 @@ def setup(cfg: Config, early_stopping_patience: Optional[int]=None):
     progress, loggers = [], [SimpleLogger()]
 
     if hasattr(cfg.task, "ema") and cfg.task.ema.enable:
-        progress.append(EMA(cfg.task.ema.decay))
+        tau = getattr(cfg.task.ema, 'tau', 2000)
+        progress.append(EMA(cfg.task.ema.decay, tau=tau))
 
     if early_stopping_patience is None:
         early_stopping_patience = 5
 
     progress.append(EarlyStopping('map', mode='max', patience=early_stopping_patience))
     progress.append(EpochLogger())
+    progress.append(ModelCheckpoint(monitor='map', mode='max', save_top_k=1, filename='best'))
 
     coco_logger = logging.getLogger("faster_coco_eval.core.cocoeval")
     coco_logger.setLevel(logging.FATAL)
