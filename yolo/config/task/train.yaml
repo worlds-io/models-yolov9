@@ -14,7 +14,6 @@ data:
   data_augment:
     Colorspace: 0.5
     HorizontalFlip: 0.5
-    JPEG: 0.25
     RandomPad: 0.125
     RandomCrop: 0.25
     RemoveOutliers: 1e-8
