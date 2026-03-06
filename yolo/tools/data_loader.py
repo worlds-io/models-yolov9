@@ -229,7 +229,8 @@ def create_dataloader(data_cfg: DataConfig, dataset_cfg: DatasetConfig, task: st
         num_workers=4,
         pin_memory=data_cfg.pin_memory,
         collate_fn=collate_fn,
-        persistent_workers=True
+        persistent_workers=True,
+        shuffle=data_cfg.shuffle,
     )
 
 

@@ -27,7 +27,7 @@ def main(cfg: Config):
 
     early_stopping_patience = getattr(cfg.task, 'early_stopping_patience', None)
     epochs = getattr(cfg.task, 'epoch', None)
-    batch_size = getattr(cfg.task.data, 'batch_size', 16)
+    val_batch_size = getattr(getattr(cfg.task, 'validation', cfg.task).data, 'batch_size', 32)
 
     callbacks, loggers, save_path = setup(cfg, early_stopping_patience=early_stopping_patience)
 
@@ -41,10 +41,10 @@ def main(cfg: Config):
         log_every_n_steps=50,
         gradient_clip_val=10,
         gradient_clip_algorithm='value',
-        deterministic=True,
+        deterministic=False,
         enable_progress_bar=False,
         default_root_dir=save_path,
-        limit_val_batches=5000 // batch_size
+        limit_val_batches=5000 // val_batch_size,
     )
 
     if cfg.task.task == 'train':
@@ -62,12 +62,16 @@ def main(cfg: Config):
 
 def _get_latest_checkpoint(cfg: Config) -> str:
     checkpoints_directory = os.path.join(cfg.out_path, cfg.task.task, cfg.name, 'checkpoints')
-    checkpoint_files      = glob.glob('%s/*.ckpt' % checkpoints_directory)
+
+    best_checkpoint = os.path.join(checkpoints_directory, 'best.ckpt')
+    if os.path.exists(best_checkpoint):
+        return best_checkpoint
+
+    checkpoint_files = glob.glob('%s/*.ckpt' % checkpoints_directory)
     if len(checkpoint_files) == 0:
         raise RuntimeError('No checkpoint found after training completed')
 
-    latest_checkpoint_file = max(checkpoint_files, key=os.path.getctime)
-    return latest_checkpoint_file
+    return max(checkpoint_files, key=os.path.getctime)
 
 
 def export_onnx(cfg: Config):

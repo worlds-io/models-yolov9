@@ -127,7 +127,7 @@ def create_optimizer(model: YOLO, optim_cfg: OptimizerConfig) -> Optimizer:
     optimizer_class.next_epoch = next_epoch
 
     optimizer = optimizer_class(model_parameters, **optim_cfg.args)
-    optimizer.max_lr = [0.1, 0, 0]
+    optimizer.max_lr = [optim_cfg.args.lr, 0, 0]
     return optimizer
 
 
