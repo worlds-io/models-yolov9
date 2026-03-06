@@ -52,4 +52,4 @@ scheduler:
 ema:
   enable: true
   decay: 0.9999
-  tau: 500
+  tau: 2000
