@@ -222,7 +222,7 @@ class Colorspace:
 
             dhue        = np.random.uniform(-hue,         hue)
             dsaturation = np.random.uniform(1/saturation, saturation)
-            dexposure   = np.random.uniform(1/exposure,   1)
+            dexposure   = np.random.uniform(1/exposure,   exposure)
 
             hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV).astype(np.float32)
             hsv_image[:, :, 1] *= dsaturation
