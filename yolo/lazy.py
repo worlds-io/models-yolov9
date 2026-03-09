@@ -12,6 +12,10 @@ import torch
 from lightning import Trainer
 from omegaconf import OmegaConf
 
+# run a quick autotuning pass at the start of training so that we use the optimal GPU kernels for the model
+torch.backends.cudnn.benchmark = True
+torch.set_float32_matmul_precision('high')
+
 project_root = Path(__file__).resolve().parent.parent
 sys.path.append(str(project_root))
 
@@ -39,8 +43,6 @@ def main(cfg: Config):
         callbacks=callbacks,
         num_sanity_val_steps=0,
         log_every_n_steps=50,
-        gradient_clip_val=10,
-        gradient_clip_algorithm='value',
         deterministic=False,
         enable_progress_bar=False,
         default_root_dir=save_path,

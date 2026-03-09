@@ -1,3 +1,4 @@
+import itertools
 import os
 import time
 from copy import deepcopy
@@ -46,6 +47,7 @@ class EMA(Callback):
         self.tau = tau
         self.step = 0
         self.ema_state_dict = None
+        self.ema_tensors = None
 
     def setup(self, trainer, pl_module, stage):
         pl_module.ema = deepcopy(pl_module.model)
@@ -62,10 +64,22 @@ class EMA(Callback):
     def on_train_batch_end(self, trainer: "Trainer", pl_module: "LightningModule", *args, **kwargs) -> None:
         if self.ema_state_dict is None:
             self.ema_state_dict = deepcopy(pl_module.model.state_dict())
+            model_tensor_dict = dict(itertools.chain(
+                pl_module.model.named_parameters(),
+                pl_module.model.named_buffers()
+            ))
+            # lerp only supports floating-point tensors; integer buffers (e.g. num_batches_tracked) are copied directly
+            float_keys = [k for k in self.ema_state_dict if model_tensor_dict[k].is_floating_point()]
+            int_keys = [k for k in self.ema_state_dict if not model_tensor_dict[k].is_floating_point()]
+            self.ema_tensors = [self.ema_state_dict[k] for k in float_keys]
+            self._model_float_tensors = [model_tensor_dict[k] for k in float_keys]
+            self._ema_int_tensors = [self.ema_state_dict[k] for k in int_keys]
+            self._model_int_tensors = [model_tensor_dict[k] for k in int_keys]
         self.step += 1
         decay_factor = self.decay * (1 - exp(-self.step / self.tau))
-        for key, param in pl_module.model.state_dict().items():
-            self.ema_state_dict[key] = lerp(param.detach(), self.ema_state_dict[key], decay_factor)
+        torch._foreach_lerp_(self.ema_tensors, self._model_float_tensors, 1 - decay_factor)
+        for ema_t, model_t in zip(self._ema_int_tensors, self._model_int_tensors):
+            ema_t.copy_(model_t)
 
 
 class EpochLogger(Callback):
@@ -103,10 +117,6 @@ def create_optimizer(model: YOLO, optim_cfg: OptimizerConfig) -> Optimizer:
     def next_epoch(self, batch_num, epoch_idx):
         self.min_lr = self.max_lr
         self.max_lr = [param["lr"] for param in self.param_groups]
-        # TODO: load momentum from config instead a fix number
-        #       0.937: Start Momentum
-        #       0.8  : Normal Momemtum
-        #       3    : The warm up epoch num
         self.min_mom = lerp(0.8, 0.937, min(epoch_idx, 3), 3)
         self.max_mom = lerp(0.8, 0.937, min(epoch_idx + 1, 3), 3)
         self.batch_num = batch_num

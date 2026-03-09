@@ -67,7 +67,7 @@ class PadAndResize:
         scale = min(self.target_width / img_width, self.target_height / img_height)
         new_width, new_height = int(img_width * scale), int(img_height * scale)
 
-        resized_image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+        resized_image = image.resize((new_width, new_height), Image.Resampling.BILINEAR)
 
         pad_left = 0  # (self.target_width - new_width) // 2
         pad_top = 0  # (self.target_height - new_height) // 2
@@ -130,7 +130,7 @@ class MixUp:
         image2, boxes2 = self.parent.get_more_data()[0]
 
         # Resize the second image to be the same size as the first
-        image2 = image2.resize((image.width, image.height), Image.Resampling.LANCZOS)
+        image2 = image2.resize((image.width, image.height), Image.Resampling.BILINEAR)
 
         # Calculate the mixup lambda parameter
         lam = np.random.beta(self.alpha, self.alpha) if self.alpha > 0 else 0.5
@@ -222,7 +222,7 @@ class Colorspace:
 
             dhue        = np.random.uniform(-hue,         hue)
             dsaturation = np.random.uniform(1/saturation, saturation)
-            dexposure   = np.random.uniform(1/exposure,   1)
+            dexposure   = np.random.uniform(1/exposure,   exposure)
 
             hsv_image = cv2.cvtColor(image, cv2.COLOR_RGB2HSV).astype(np.float32)
             hsv_image[:, :, 1] *= dsaturation
