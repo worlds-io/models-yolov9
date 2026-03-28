@@ -51,7 +51,7 @@ class YOLO(nn.Module):
                 source = self.get_source_idx(layer_info.get("source", -1), layer_idx)
 
                 # Find in channels
-                if any(module in layer_type for module in ["Conv", "ELAN", "ADown", "AConv", "CBLinear", "SCDown", "SE"]):
+                if any(module in layer_type for module in ["Conv", "ELAN", "ADown", "AConv", "CBLinear", "SCDown", "SE", "SpatialAttention"]):
                     layer_args["in_channels"] = output_dim[source]
                 if any(module in layer_type for module in ["Detection", "Segmentation", "Classification"]):
                     if isinstance(source, list):

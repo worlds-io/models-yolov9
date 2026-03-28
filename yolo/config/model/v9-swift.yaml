@@ -2,7 +2,7 @@ name: v9-swift
 
 anchor:
   reg_max: 16
-  strides: [4, 8, 16, 32]
+  strides: [8, 16, 32]
 
 model:
   backbone:
@@ -13,20 +13,19 @@ model:
     - Conv:
         args: {out_channels: 96, kernel_size: 3, stride: 2}
 
-    # Stage 1 (stride 4, 160x96): feeds into P2 small-object path
+    # Stage 1 (stride 4, 160x96)
     - RepNCSPELAN:
         args: {out_channels: 192, part_channels: 96}
-        tags: B2
 
-    # Stage 2 (stride 8, 80x48): first standard detection scale
-    - SCDown:
+    # Stage 2 (stride 8, 80x48): first detection scale
+    - ADown:
         args: {out_channels: 192}
     - RepNCSPELAN:
         args: {out_channels: 256, part_channels: 128}
         tags: B3
 
     # Stage 3 (stride 16, 40x24): mid-level features + channel attention
-    - SCDown:
+    - ADown:
         args: {out_channels: 256}
     - RepNCSPELAN:
         args: {out_channels: 384, part_channels: 192, csp_args: {repeat_num: 2}}
@@ -35,7 +34,7 @@ model:
         tags: B4
 
     # Stage 4 (stride 32, 20x12): high-level semantics — invest depth here
-    - SCDown:
+    - ADown:
         args: {out_channels: 384}
     - RepNCSPELAN:
         args: {out_channels: 512, part_channels: 256, csp_args: {repeat_num: 3}}
@@ -49,65 +48,49 @@ model:
         args: {out_channels: 384}
         tags: N5
 
-    # Top-down path: semantic enrichment
+    # Top-down path
     - UpSample:
         args: {scale_factor: 2, mode: nearest}
     - Concat:
         source: [-1, B4]  # 384 + 384 = 768
-    - GhostELAN:
-        args: {out_channels: 256, part_channels: 256}
+    - RepNCSPELAN:
+        args: {out_channels: 256, part_channels: 128}
         tags: N4
 
     - UpSample:
         args: {scale_factor: 2, mode: nearest}
     - Concat:
         source: [-1, B3]  # 256 + 256 = 512
-    - RepNCSPELAN:
-        args: {out_channels: 256, part_channels: 128}
-        tags: N3
-
-    # Extend top-down to stride 4 for small objects
-    - UpSample:
-        args: {scale_factor: 2, mode: nearest}
-    - Concat:
-        source: [-1, B2]  # 256 + 192 = 448
 
   head:
-    # P2 (stride 4, 160x96): tiny object detection — slim but present
-    - GhostELAN:
-        args: {out_channels: 192, part_channels: 192}
-        tags: P2
-
-    # Bottom-up to P3 (stride 8, 80x48): small object detection — strong
-    - SCDown:
-        args: {out_channels: 192}
-    - Concat:
-        source: [-1, N3]  # 192 + 256 = 448
+    # P3 (stride 8, 80x48): small objects — strong + spatial attention
     - RepNCSPELAN:
         args: {out_channels: 256, part_channels: 128}
+    - SpatialAttention:
+        args: {kernel_size: 7}
         tags: P3
 
-    # Bottom-up to P4 (stride 16, 40x24): medium objects — efficient
-    - SCDown:
+    # Bottom-up to P4 (stride 16, 40x24)
+    - ADown:
         args: {out_channels: 256}
     - Concat:
         source: [-1, N4]  # 256 + 256 = 512
-    - GhostELAN:
-        args: {out_channels: 256, part_channels: 256}
+    - RepNCSPELAN:
+        args: {out_channels: 384, part_channels: 192}
         tags: P4
 
-    # Bottom-up to P5 (stride 32, 20x12): large objects — efficient
-    - SCDown:
-        args: {out_channels: 256}
+    # Bottom-up to P5 (stride 32, 20x12)
+    - ADown:
+        args: {out_channels: 384}
     - Concat:
-        source: [-1, N5]  # 256 + 384 = 640
-    - GhostELAN:
-        args: {out_channels: 384, part_channels: 384}
+        source: [-1, N5]  # 384 + 384 = 768
+    - RepNCSPELAN:
+        args: {out_channels: 512, part_channels: 256}
         tags: P5
 
   detection:
     - MultiheadDetection:
-        source: [P2, P3, P4, P5]
+        source: [P3, P4, P5]
         tags: Main
         output: True
 

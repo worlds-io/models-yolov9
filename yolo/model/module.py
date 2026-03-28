@@ -658,3 +658,25 @@ class SE(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         w = self.sigmoid(self.fc2(self.act(self.fc1(self.pool(x)))))
         return x * w
+
+
+class SpatialAttention(nn.Module):
+    """Lightweight spatial attention from CBAM.
+
+    Computes a spatial attention map from channel-wise max and average
+    pooling, helping the detector focus on informative regions. Especially
+    useful at the P3 scale for small-object detection.
+
+    Reference: Woo et al., "CBAM: Convolutional Block Attention Module", ECCV 2018.
+    """
+
+    def __init__(self, in_channels: int, kernel_size: int = 7):
+        super().__init__()
+        self.conv = nn.Conv2d(2, 1, kernel_size, padding=kernel_size // 2, bias=False)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x: Tensor) -> Tensor:
+        avg = x.mean(dim=1, keepdim=True)
+        mx = x.amax(dim=1, keepdim=True)
+        attn = self.sigmoid(self.conv(torch.cat([avg, mx], dim=1)))
+        return x * attn
