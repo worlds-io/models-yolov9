@@ -170,8 +170,17 @@ class DistillationLoss(nn.Module):
         # Classification: BCE with teacher's sigmoid probs as soft targets.
         # YOLO uses sigmoid-based multi-label classification (not softmax),
         # so we match per-class probabilities independently.
+        #
+        # We use reduction="none" and weight by the teacher's confidence so
+        # that anchors where the teacher sees an object contribute far more
+        # than the vast majority of background anchors (which would otherwise
+        # drown the signal to near-zero under a plain mean).
         t_probs = t_cls.detach().sigmoid()
-        cls_loss = F.binary_cross_entropy_with_logits(s_cls, t_probs, reduction="mean")
+        raw_cls = F.binary_cross_entropy_with_logits(s_cls, t_probs, reduction="none")
+        # Weight: max class probability per anchor — foreground anchors get
+        # weight ~1.0, background anchors get weight ~0.0
+        fg_weight = t_probs.amax(dim=-1, keepdim=True).clamp(min=0.01)
+        cls_loss = (raw_cls * fg_weight).mean()
 
         # Regression: L2 on DFL anchor distributions
         dfl_loss = F.mse_loss(s_anc, t_anc.detach())
