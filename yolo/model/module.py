@@ -680,3 +680,71 @@ class SpatialAttention(nn.Module):
         mx = x.amax(dim=1, keepdim=True)
         attn = self.sigmoid(self.conv(torch.cat([avg, mx], dim=1)))
         return x * attn
+
+
+# ----------- Transformer Modules (v9-vit) ----------- #
+class TransformerBlock(nn.Module):
+    """Standard pre-norm transformer encoder block.
+
+    Consists of multi-head self-attention followed by an MLP (feed-forward
+    network), both with residual connections and LayerNorm.
+    """
+
+    def __init__(self, dim: int, num_heads: int = 8, mlp_ratio: float = 2.0):
+        super().__init__()
+        self.norm1 = nn.LayerNorm(dim)
+        self.attn = nn.MultiheadAttention(dim, num_heads, batch_first=True)
+        self.norm2 = nn.LayerNorm(dim)
+        mlp_hidden = int(dim * mlp_ratio)
+        self.mlp = nn.Sequential(
+            nn.Linear(dim, mlp_hidden),
+            nn.GELU(),
+            nn.Linear(mlp_hidden, dim),
+        )
+
+    def forward(self, x: Tensor) -> Tensor:
+        h = self.norm1(x)
+        h = self.attn(h, h, h, need_weights=False)[0]
+        x = x + h
+        x = x + self.mlp(self.norm2(x))
+        return x
+
+
+class TransformerStage(nn.Module):
+    """A stage of transformer blocks operating on 2D feature maps.
+
+    Reshapes (B, C, H, W) -> (B, HW, C), applies a stack of transformer
+    encoder blocks with global self-attention, then reshapes back. An
+    optional 1x1 convolution projects channels when in != out.
+
+    Best placed at stride >= 16 where the sequence length (HW) is small
+    enough for efficient self-attention. At 640x384 input:
+      - stride 16: 40x24 = 960 tokens  (efficient)
+      - stride 32: 20x12 = 240 tokens  (very cheap)
+    """
+
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        num_heads: int = 6,
+        depth: int = 2,
+        mlp_ratio: float = 2.0,
+    ):
+        super().__init__()
+        self.proj = Conv(in_channels, out_channels, 1) if in_channels != out_channels else nn.Identity()
+        self.blocks = nn.ModuleList([
+            TransformerBlock(out_channels, num_heads, mlp_ratio)
+            for _ in range(depth)
+        ])
+        self.norm = nn.LayerNorm(out_channels)
+
+    def forward(self, x: Tensor) -> Tensor:
+        x = self.proj(x)
+        B, C, H, W = x.shape
+        x = x.flatten(2).transpose(1, 2)  # (B, HW, C)
+        for blk in self.blocks:
+            x = blk(x)
+        x = self.norm(x)
+        x = x.transpose(1, 2).reshape(B, C, H, W)  # (B, C, H, W)
+        return x

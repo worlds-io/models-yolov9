@@ -21,7 +21,7 @@ sys.path.append(str(project_root))
 
 from yolo.config.config import Config
 from yolo.model.yolo import create_model
-from yolo.tools.solver import BaseModel, InferenceModel, TrainModel, ValidateModel
+from yolo.tools.solver import BaseModel, DistillTrainModel, InferenceModel, TrainModel, ValidateModel
 from yolo.utils.logging_utils import setup
 
 @hydra.main(config_path='config', config_name='config', version_base=None)
@@ -50,7 +50,10 @@ def main(cfg: Config):
     )
 
     if cfg.task.task == 'train':
-        model = TrainModel(cfg)
+        if getattr(cfg.task, 'distillation', None) is not None:
+            model = DistillTrainModel(cfg)
+        else:
+            model = TrainModel(cfg)
         trainer.fit(model)
 
         export_onnx(cfg)

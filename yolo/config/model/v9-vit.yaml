@@ -1,0 +1,93 @@
+name: v9-vit
+
+anchor:
+  reg_max: 16
+  strides: [8, 16, 32]
+
+model:
+  backbone:
+    # CNN stem: efficient low-level feature extraction
+    # 640x384 -> 320x192 -> 160x96
+    - Conv:
+        args: {out_channels: 48, kernel_size: 3, stride: 2}
+        source: 0
+    - Conv:
+        args: {out_channels: 96, kernel_size: 3, stride: 2}
+
+    # Stage 1 (stride 4, 160x96): CNN — local features
+    - RepNCSPELAN:
+        args: {out_channels: 192, part_channels: 96}
+
+    # Stage 2 (stride 8, 80x48): CNN — first detection scale
+    # 3840 tokens is too many for efficient self-attention, keep as CNN
+    - ADown:
+        args: {out_channels: 192}
+    - RepNCSPELAN:
+        args: {out_channels: 256, part_channels: 128}
+        tags: B3
+
+    # Stage 3 (stride 16, 40x24 = 960 tokens): Transformer — global context
+    - ADown:
+        args: {out_channels: 256}
+    - TransformerStage:
+        args: {out_channels: 384, num_heads: 6, depth: 3, mlp_ratio: 2.0}
+        tags: B4
+
+    # Stage 4 (stride 32, 20x12 = 240 tokens): Transformer — deep semantics
+    - ADown:
+        args: {out_channels: 384}
+    - TransformerStage:
+        args: {out_channels: 512, num_heads: 8, depth: 2, mlp_ratio: 2.0}
+        tags: B5
+
+  neck:
+    # SPP at deepest level
+    - SPPELAN:
+        args: {out_channels: 384}
+        tags: N5
+
+    # Top-down path (CNN — fast feature fusion)
+    - UpSample:
+        args: {scale_factor: 2, mode: nearest}
+    - Concat:
+        source: [-1, B4]  # 384 + 384 = 768
+    - RepNCSPELAN:
+        args: {out_channels: 256, part_channels: 128}
+        tags: N4
+
+    - UpSample:
+        args: {scale_factor: 2, mode: nearest}
+    - Concat:
+        source: [-1, B3]  # 256 + 256 = 512
+
+  head:
+    # P3 (stride 8, 80x48): small objects — spatial attention
+    - RepNCSPELAN:
+        args: {out_channels: 256, part_channels: 128}
+    - SpatialAttention:
+        args: {kernel_size: 7}
+        tags: P3
+
+    # Bottom-up to P4 (stride 16, 40x24)
+    - ADown:
+        args: {out_channels: 256}
+    - Concat:
+        source: [-1, N4]  # 256 + 256 = 512
+    - RepNCSPELAN:
+        args: {out_channels: 384, part_channels: 192}
+        tags: P4
+
+    # Bottom-up to P5 (stride 32, 20x12)
+    - ADown:
+        args: {out_channels: 384}
+    - Concat:
+        source: [-1, N5]  # 384 + 384 = 768
+    - RepNCSPELAN:
+        args: {out_channels: 512, part_channels: 256}
+        tags: P5
+
+  detection:
+    - MultiheadDetection:
+        source: [P3, P4, P5]
+        tags: Main
+        output: True

@@ -144,6 +144,49 @@ class DualLoss:
         return sum(total_loss), loss_dict
 
 
+class DistillationLoss(nn.Module):
+    """Knowledge distillation loss for object detection.
+
+    Matches the student's detection outputs to the teacher's via:
+      - Classification: KL divergence with temperature scaling on class logits
+      - Regression: L2 loss on DFL anchor distributions
+
+    Both teacher and student must share the same strides, reg_max, and
+    num_classes so that their Vec2Box outputs are shape-aligned.
+    """
+
+    def __init__(self, temperature: float = 4.0, alpha_cls: float = 1.0, alpha_dfl: float = 1.0) -> None:
+        super().__init__()
+        self.temperature = temperature
+        self.alpha_cls = alpha_cls
+        self.alpha_dfl = alpha_dfl
+
+    def forward(
+        self, student_preds: List[Tensor], teacher_preds: List[Tensor]
+    ) -> Tuple[Tensor, Dict[str, float]]:
+        s_cls, s_anc, _ = student_preds
+        t_cls, t_anc, _ = teacher_preds
+
+        T = self.temperature
+
+        # Classification: KL divergence with temperature scaling
+        cls_loss = F.kl_div(
+            F.log_softmax(s_cls / T, dim=-1),
+            F.softmax(t_cls.detach() / T, dim=-1),
+            reduction="batchmean",
+        ) * (T * T)
+
+        # Regression: L2 on DFL anchor distributions
+        dfl_loss = F.mse_loss(s_anc, t_anc.detach())
+
+        total = self.alpha_cls * cls_loss + self.alpha_dfl * dfl_loss
+        loss_dict = {
+            "Distill/CLSLoss": (self.alpha_cls * cls_loss).detach().item(),
+            "Distill/DFLLoss": (self.alpha_dfl * dfl_loss).detach().item(),
+        }
+        return total, loss_dict
+
+
 def create_loss_function(cfg: Config, vec2box) -> DualLoss:
     # TODO: make it flexible, if cfg doesn't contain aux, only use SingleLoss
     loss_function = DualLoss(cfg, vec2box)
