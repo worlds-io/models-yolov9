@@ -167,14 +167,11 @@ class DistillationLoss(nn.Module):
         s_cls, s_anc, _ = student_preds
         t_cls, t_anc, _ = teacher_preds
 
-        T = self.temperature
-
-        # Classification: KL divergence with temperature scaling
-        cls_loss = F.kl_div(
-            F.log_softmax(s_cls / T, dim=-1),
-            F.softmax(t_cls.detach() / T, dim=-1),
-            reduction="batchmean",
-        ) * (T * T)
+        # Classification: BCE with teacher's sigmoid probs as soft targets.
+        # YOLO uses sigmoid-based multi-label classification (not softmax),
+        # so we match per-class probabilities independently.
+        t_probs = t_cls.detach().sigmoid()
+        cls_loss = F.binary_cross_entropy_with_logits(s_cls, t_probs, reduction="mean")
 
         # Regression: L2 on DFL anchor distributions
         dfl_loss = F.mse_loss(s_anc, t_anc.detach())
