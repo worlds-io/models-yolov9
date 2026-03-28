@@ -140,6 +140,7 @@ class DistillTrainModel(TrainModel):
             teacher_model_cfg, cfg=cfg,
             class_num=cfg.dataset.class_num,
             weight_path=Path(distill_cfg.teacher_weights),
+            skip_heads=False,
         )
         self.teacher.eval()
         for p in self.teacher.parameters():

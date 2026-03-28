@@ -130,12 +130,17 @@ class YOLO(nn.Module):
         else:
             raise ValueError(f"Unsupported layer type: {layer_type}")
 
-    def save_load_weights(self, weights: Union[Path, OrderedDict]):
+    def save_load_weights(self, weights: Union[Path, OrderedDict], skip_heads: bool = True):
         """
         Update the model's weights with the provided weights.
 
         args:
             weights: A OrderedDict containing the new weights.
+            skip_heads: If True (default), skip loading detection head weights
+                        so they stay randomly initialised for finetuning on new
+                        classes.  Set to False when loading a teacher model for
+                        distillation, where the full pretrained weights
+                        (including heads) are needed.
         """
         if isinstance(weights, Path):
             logger.info(f":building_construction: Loading weights from {weights}")
@@ -148,7 +153,7 @@ class YOLO(nn.Module):
         error_dict = {"Mismatch": set(), "Not Found": set()}
         for model_key, model_weight in model_state_dict.items():
             # don't load weights into the detection heads since we're finetuning
-            if model_key.split(".")[1] == 'heads':
+            if skip_heads and model_key.split(".")[1] == 'heads':
                 continue
 
             if model_key not in weights:
@@ -166,11 +171,14 @@ class YOLO(nn.Module):
         self.model.load_state_dict(model_state_dict)
 
 
-def create_model(model_cfg: ModelConfig, cfg: Optional[Config] = None, weight_path: Union[bool, Path] = True, class_num: int = 80) -> YOLO:
+def create_model(model_cfg: ModelConfig, cfg: Optional[Config] = None, weight_path: Union[bool, Path] = True, class_num: int = 80, skip_heads: bool = True) -> YOLO:
     """Constructs and returns a model from a Dictionary configuration file.
 
     Args:
         config_file (dict): The configuration file of the model.
+        skip_heads: If True (default), detection head weights are not loaded
+                    (fresh init for finetuning).  Pass False when loading a
+                    teacher for distillation.
 
     Returns:
         YOLO: An instance of the model defined by the given configuration.
@@ -187,7 +195,7 @@ def create_model(model_cfg: ModelConfig, cfg: Optional[Config] = None, weight_pa
             logger.info(f"🌐 Weight {weight_path} not found, downloading")
             prepare_weight(weight_path=weight_path)
         if weight_path.exists():
-            model.save_load_weights(weight_path)
+            model.save_load_weights(weight_path, skip_heads=skip_heads)
             logger.info(":white_check_mark: Success load model & weight")
     else:
         logger.info(":white_check_mark: Success load model")
