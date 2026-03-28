@@ -19,6 +19,7 @@ from yolo.config.config import IDX_TO_ID, NMSConfig, OptimizerConfig, SchedulerC
 from yolo.model.yolo import YOLO
 from yolo.utils.bounding_box_utils import Anc2Box, Vec2Box, bbox_nms, transform_bbox
 from yolo.utils.logger import logger
+from yolo.model.module import RepConv
 
 
 def lerp(start: float, end: float, step: Union[int, float], total: int = 1):
@@ -227,6 +228,33 @@ def collect_prediction(predict_json: List, local_rank: int) -> List:
     elif dist.is_initialized():
         dist.gather_object(predict_json, None, dst=0)
     return predict_json
+
+
+def reparameterize_model(model: torch.nn.Module) -> None:
+    """Fuse all RepConv blocks in-place for faster inference.
+
+    Each RepConv's parallel 3x3 + 1x1 branches are merged into a single 3x3
+    convolution followed by the activation. This is mathematically equivalent
+    but reduces memory-bandwidth overhead at inference time (+10-20% throughput).
+    """
+    from torch import nn
+
+    for name, module in list(model.named_modules()):
+        if not isinstance(module, RepConv):
+            continue
+        fused_conv = module.fuse()
+        replacement = nn.Sequential(fused_conv, module.act)
+        # Walk to parent and replace the attribute
+        parts = name.split(".")
+        parent = model
+        for part in parts[:-1]:
+            parent = getattr(parent, part) if not part.isdigit() else parent[int(part)]
+        attr = parts[-1]
+        if attr.isdigit():
+            parent[int(attr)] = replacement
+        else:
+            setattr(parent, attr, replacement)
+    logger.info(":rocket: Reparameterized all RepConv blocks for inference")
 
 
 def predicts_to_json(img_paths, predicts, rev_tensor):

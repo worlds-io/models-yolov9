@@ -27,6 +27,7 @@ class YOLO(nn.Module):
         self.layer_map = get_layer_map()  # Get the map Dict[str: Module]
         self.model: List[YOLOLayer] = nn.ModuleList()
         self.reg_max = getattr(model_cfg.anchor, "reg_max", 16)
+        self.anchor_strides = getattr(model_cfg.anchor, "strides", [8, 16, 32])
         self.is_exporting = getattr(model_cfg, "is_exporting", False)
         if cfg is not None:
             self.image_size = cfg.image_size
@@ -50,7 +51,7 @@ class YOLO(nn.Module):
                 source = self.get_source_idx(layer_info.get("source", -1), layer_idx)
 
                 # Find in channels
-                if any(module in layer_type for module in ["Conv", "ELAN", "ADown", "AConv", "CBLinear"]):
+                if any(module in layer_type for module in ["Conv", "ELAN", "ADown", "AConv", "CBLinear", "SCDown", "SE"]):
                     layer_args["in_channels"] = output_dim[source]
                 if any(module in layer_type for module in ["Detection", "Segmentation", "Classification"]):
                     if isinstance(source, list):
@@ -61,6 +62,7 @@ class YOLO(nn.Module):
                     layer_args["reg_max"] = self.reg_max
                     layer_args["is_exporting"] = self.is_exporting
                     layer_args["image_size"] = self.image_size
+                    layer_args["anchor_strides"] = self.anchor_strides
 
                 # create layers
                 layer = self.create_layer(layer_type, source, layer_info, **layer_args)
