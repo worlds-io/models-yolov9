@@ -100,7 +100,11 @@ class TrainModel(ValidateModel):
             rank_zero_only=True,
         )
         self.log_dict(lr_dict, prog_bar=False, logger=True, on_epoch=False, rank_zero_only=True)
-        return loss * batch_size
+        # Divide by accumulation steps so that the summed gradient across
+        # grad_accum_steps physical batches equals the mean gradient over the
+        # nominal batch. Combined with Trainer(accumulate_grad_batches=N), this
+        # keeps the effective update magnitude independent of physical batch size.
+        return loss / self.trainer.accumulate_grad_batches
 
     def configure_optimizers(self):
         optimizer = create_optimizer(self.model, self.cfg.task.optimizer)
