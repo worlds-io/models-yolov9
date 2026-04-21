@@ -35,6 +35,28 @@ def main(cfg: Config):
 
     callbacks, loggers, save_path = setup(cfg, early_stopping_patience=early_stopping_patience)
 
+    # Gradient accumulation: keep the effective (nominal) batch size constant
+    # regardless of available GPU memory. The per-step physical batch may be
+    # smaller than the paper's batch size; we accumulate gradients across
+    # grad_accum_steps forward/backward passes to recover the same update.
+    accumulate_grad_batches = 1
+    if cfg.task.task == 'train':
+        world_size = int(os.environ.get('WORLD_SIZE', '1'))
+        batch_size = cfg.task.data.batch_size
+        nominal_batch_size = getattr(cfg.task.data, 'nominal_batch_size', None) or batch_size
+        total_step_batch = batch_size * world_size
+        if nominal_batch_size % total_step_batch != 0:
+            print(
+                f"Warning: nominal_batch_size ({nominal_batch_size}) is not divisible by "
+                f"batch_size * world_size ({total_step_batch}); effective batch size will be "
+                f"{(nominal_batch_size // total_step_batch) * total_step_batch}"
+            )
+        accumulate_grad_batches = max(1, nominal_batch_size // total_step_batch)
+        print(
+            f"Gradient accumulation: physical batch={batch_size}, world_size={world_size}, "
+            f"nominal batch={nominal_batch_size}, accumulate_grad_batches={accumulate_grad_batches}"
+        )
+
     trainer = Trainer(
         accelerator='auto',
         max_epochs=epochs,
@@ -47,6 +69,7 @@ def main(cfg: Config):
         enable_progress_bar=False,
         default_root_dir=save_path,
         limit_val_batches=5000 // val_batch_size,
+        accumulate_grad_batches=accumulate_grad_batches,
     )
 
     if cfg.task.task == 'train':
