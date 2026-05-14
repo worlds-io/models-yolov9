@@ -279,7 +279,7 @@ def setup(cfg: Config, early_stopping_patience: Optional[int]=None):
     if early_stopping_patience is None:
         early_stopping_patience = 5
 
-    progress.append(EarlyStopping('map', mode='max', patience=early_stopping_patience))
+    progress.append(EarlyStopping('map', mode='max', patience=early_stopping_patience, min_delta=0.001))
     progress.append(EpochLogger())
     progress.append(ModelCheckpoint(monitor='map', mode='max', save_top_k=1, filename='best'))
 
