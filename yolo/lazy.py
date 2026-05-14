@@ -31,6 +31,7 @@ def main(cfg: Config):
 
     early_stopping_patience = getattr(cfg.task, 'early_stopping_patience', None)
     epochs = getattr(cfg.task, 'epoch', None)
+    min_epochs = getattr(cfg.task, 'min_epochs', None)
     val_batch_size = getattr(getattr(cfg.task, 'validation', cfg.task).data, 'batch_size', 32)
 
     callbacks, loggers, save_path = setup(cfg, early_stopping_patience=early_stopping_patience)
@@ -60,6 +61,7 @@ def main(cfg: Config):
     trainer = Trainer(
         accelerator='auto',
         max_epochs=epochs,
+        min_epochs=min_epochs,
         precision='16-mixed',
         logger=loggers,
         callbacks=callbacks,
@@ -68,7 +70,7 @@ def main(cfg: Config):
         deterministic=False,
         enable_progress_bar=False,
         default_root_dir=save_path,
-        limit_val_batches=5000 // val_batch_size,
+        limit_val_batches=1.0,
         accumulate_grad_batches=accumulate_grad_batches,
     )
 
