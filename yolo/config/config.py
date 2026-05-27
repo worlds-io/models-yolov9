@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Union
 
 from torch import nn
@@ -128,6 +128,24 @@ class ValidationConfig:
 
 
 @dataclass
+class AFSSConfig:
+    """Anti-Forgetting Sampling Strategy. Disabled by default; see yolo/tools/afss.py."""
+
+    enabled: bool = False
+    # score_only computes/logs the tier distribution every refresh without subsampling.
+    score_only: bool = False
+    easy_thresh: float = 0.9
+    medium_thresh: float = 0.5
+    easy_keep_frac: float = 0.15
+    medium_keep_frac: float = 0.5
+    hard_repeat: int = 1
+    refresh_period: int = 5
+    iou_thresh: float = 0.5
+    conf_thresh: float = 0.25
+    max_score_images: int = 5000
+
+
+@dataclass
 class TrainConfig:
     task: str
     epoch: int
@@ -138,6 +156,7 @@ class TrainConfig:
     scheduler: SchedulerConfig
     ema: EMAConfig
     validation: ValidationConfig
+    afss: AFSSConfig = field(default_factory=AFSSConfig)
 
 
 @dataclass

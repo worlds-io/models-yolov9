@@ -69,7 +69,13 @@ class TrainModel(ValidateModel):
     def __init__(self, cfg: Config):
         super().__init__(cfg)
         self.cfg = cfg
-        self.train_loader = create_dataloader(self.cfg.task.data, self.cfg.dataset, self.cfg.task.task)
+        self.afss_cfg = getattr(self.cfg.task, "afss", None)
+        self.train_loader = create_dataloader(
+            self.cfg.task.data, self.cfg.dataset, self.cfg.task.task, self.afss_cfg
+        )
+        self.afss_sampler = getattr(self.train_loader, "afss_sampler", None)
+        self._afss_scoring_loader = None
+        self._afss_scoring_indices = None
 
     def setup(self, stage):
         super().setup(stage)
@@ -78,7 +84,41 @@ class TrainModel(ValidateModel):
     def train_dataloader(self):
         return self.train_loader
 
+    def _refresh_afss(self):
+        """Periodically re-score the training set and update the sampler's tiers.
+
+        Runs a clean (validation-transform) inference pass over the train images
+        using the same post-process path as validation, so sufficiency reflects
+        un-augmented detections. Built lazily because it needs the model on-device.
+        """
+        from yolo.tools.afss import build_scoring_loader, score_train_set
+
+        if self._afss_scoring_loader is None:
+            self._afss_scoring_loader, self._afss_scoring_indices = build_scoring_loader(
+                self.validation_cfg.data,
+                self.cfg.dataset,
+                self.cfg.task.task,
+                self.afss_cfg.max_score_images,
+            )
+        scores = score_train_set(
+            self.ema,
+            self.post_process,
+            self._afss_scoring_loader,
+            self._afss_scoring_indices,
+            self.device,
+            conf_thresh=self.afss_cfg.conf_thresh,
+            iou_thresh=self.afss_cfg.iou_thresh,
+        )
+        self.afss_sampler.update_sufficiency(scores, self.current_epoch)
+
     def on_train_epoch_start(self):
+        # AFSS: refresh sufficiency every K epochs, then pick this epoch's subset.
+        # Done before next_epoch() so the optimizer's per-epoch warmup step count
+        # matches the (possibly shrunk) number of iterations this epoch.
+        if self.afss_sampler is not None:
+            if self.afss_sampler.needs_refresh(self.current_epoch):
+                self._refresh_afss()
+            self.afss_sampler.set_epoch(self.current_epoch)
         self.trainer.optimizers[0].next_epoch(
             ceil(len(self.train_loader) / self.trainer.world_size), self.current_epoch
         )

@@ -215,7 +215,7 @@ def collate_fn(batch: List[Tuple[Tensor, Tensor]]) -> Tuple[Tensor, List[Tensor]
     return batch_size, batch_images, batch_targets, batch_reverse, batch_path
 
 
-def create_dataloader(data_cfg: DataConfig, dataset_cfg: DatasetConfig, task: str = "train"):
+def create_dataloader(data_cfg: DataConfig, dataset_cfg: DatasetConfig, task: str = "train", afss_cfg=None):
     if task == "inference":
         return StreamDataLoader(data_cfg)
 
@@ -223,15 +223,36 @@ def create_dataloader(data_cfg: DataConfig, dataset_cfg: DatasetConfig, task: st
         prepare_dataset(dataset_cfg, task)
     dataset = YoloDataset(data_cfg, dataset_cfg, task)
 
-    return DataLoader(
+    # When AFSS is enabled we drive index selection through a custom sampler
+    # (mutually exclusive with shuffle). The sampler is stashed on the loader so
+    # the solver can refresh sufficiency and call set_epoch each epoch.
+    afss_sampler = None
+    if task == "train" and afss_cfg is not None and getattr(afss_cfg, "enabled", False):
+        from yolo.tools.afss import AFSSSampler
+
+        afss_sampler = AFSSSampler(
+            num_images=len(dataset),
+            easy_thresh=afss_cfg.easy_thresh,
+            medium_thresh=afss_cfg.medium_thresh,
+            easy_keep_frac=afss_cfg.easy_keep_frac,
+            medium_keep_frac=afss_cfg.medium_keep_frac,
+            hard_repeat=afss_cfg.hard_repeat,
+            refresh_period=afss_cfg.refresh_period,
+            score_only=afss_cfg.score_only,
+        )
+
+    loader = DataLoader(
         dataset,
         batch_size=data_cfg.batch_size,
         num_workers=4,
         pin_memory=data_cfg.pin_memory,
         collate_fn=collate_fn,
         persistent_workers=True,
-        shuffle=data_cfg.shuffle,
+        sampler=afss_sampler,
+        shuffle=data_cfg.shuffle if afss_sampler is None else False,
     )
+    loader.afss_sampler = afss_sampler
+    return loader
 
 
 class StreamDataLoader:

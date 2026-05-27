@@ -55,3 +55,19 @@ ema:
   enable: true
   decay: 0.9999
   tau: 2000
+
+# Anti-Forgetting Sampling Strategy (see yolo/tools/afss.py). Disabled by default;
+# the Go orchestrator enables and tunes it. score_only logs the tier distribution
+# without subsampling, for validating the metric on real data first.
+afss:
+  enabled: false
+  score_only: false
+  easy_thresh: 0.9
+  medium_thresh: 0.5
+  easy_keep_frac: 0.15
+  medium_keep_frac: 0.5
+  hard_repeat: 1
+  refresh_period: 5
+  iou_thresh: 0.5
+  conf_thresh: 0.25
+  max_score_images: 5000
