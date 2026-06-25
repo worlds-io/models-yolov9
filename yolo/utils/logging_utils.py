@@ -267,7 +267,7 @@ class SimpleLogger(Logger):
         pass
 
 
-def setup(cfg: Config, early_stopping_patience: Optional[int]=None):
+def setup(cfg: Config, early_stopping_patience: Optional[int]=None, early_stopping_min_delta: Optional[float]=None):
     save_path = validate_log_directory(cfg, cfg.name)
 
     progress, loggers = [], [SimpleLogger()]
@@ -278,8 +278,10 @@ def setup(cfg: Config, early_stopping_patience: Optional[int]=None):
 
     if early_stopping_patience is None:
         early_stopping_patience = 5
+    if early_stopping_min_delta is None:
+        early_stopping_min_delta = 0.001
 
-    progress.append(EarlyStopping('map', mode='max', patience=early_stopping_patience, min_delta=0.001))
+    progress.append(EarlyStopping('map', mode='max', patience=early_stopping_patience, min_delta=early_stopping_min_delta))
     progress.append(EpochLogger())
     progress.append(ModelCheckpoint(monitor='map', mode='max', save_top_k=1, filename='best'))
 

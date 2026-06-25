@@ -30,11 +30,12 @@ def main(cfg: Config):
         cfg.dataset = OmegaConf.load(os.environ['DATASET_OVERRIDE_CONFIG'])
 
     early_stopping_patience = getattr(cfg.task, 'early_stopping_patience', None)
+    early_stopping_min_delta = getattr(cfg.task, 'early_stopping_min_delta', None)
     epochs = getattr(cfg.task, 'epoch', None)
     min_epochs = getattr(cfg.task, 'min_epochs', None)
     val_batch_size = getattr(getattr(cfg.task, 'validation', cfg.task).data, 'batch_size', 32)
 
-    callbacks, loggers, save_path = setup(cfg, early_stopping_patience=early_stopping_patience)
+    callbacks, loggers, save_path = setup(cfg, early_stopping_patience=early_stopping_patience, early_stopping_min_delta=early_stopping_min_delta)
 
     # Gradient accumulation: keep the effective (nominal) batch size constant
     # regardless of available GPU memory. The per-step physical batch may be
