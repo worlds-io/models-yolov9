@@ -135,6 +135,12 @@ def export_onnx(cfg: Config):
         input_names=['input'],
         output_names=['output'],
         dynamic_axes={'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}},
+        # torch >= 2.9 defaults to the torch.export-based exporter, which writes the weights to a
+        # separate .onnx.data file beside export_path; only export_path is uploaded. Pin the
+        # TorchScript exporter this graph was built and validated against, and the opset it
+        # defaulted to under torch 2.8 (newer torch raises the default to 20).
+        dynamo=False,
+        opset_version=18,
     )
 
     print('Successfully exported model to %s' % cfg.export_path)
