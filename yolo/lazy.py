@@ -140,7 +140,8 @@ def export_onnx(cfg: Config):
         # TorchScript exporter this graph was built and validated against, and the opset it
         # defaulted to under torch 2.8 (newer torch raises the default to 20). That exporter is
         # deprecated as of torch 2.9 (no removal version named yet); moving to dynamo=True will
-        # need external_data=False to keep the upload a single file.
+        # need external_data=False to keep the upload a single file, and re-validation of the
+        # graph (dynamic_axes -> dynamic_shapes, opset).
         dynamo=False,
         opset_version=18,
     )
