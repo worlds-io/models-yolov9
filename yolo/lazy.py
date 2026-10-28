@@ -138,7 +138,9 @@ def export_onnx(cfg: Config):
         # torch >= 2.9 defaults to the torch.export-based exporter, which writes the weights to a
         # separate .onnx.data file beside export_path; only export_path is uploaded. Pin the
         # TorchScript exporter this graph was built and validated against, and the opset it
-        # defaulted to under torch 2.8 (newer torch raises the default to 20).
+        # defaulted to under torch 2.8 (newer torch raises the default to 20). That exporter is
+        # deprecated as of torch 2.9 (no removal version named yet); moving to dynamo=True will
+        # need external_data=False to keep the upload a single file.
         dynamo=False,
         opset_version=18,
     )
