@@ -164,8 +164,9 @@ class MultiheadDetection(nn.Module):
         self.heads = nn.ModuleList(
             [DetectionHead((in_channels[0], in_channel), num_classes, head_index=i, image_size=image_size, **head_kwargs) for i, in_channel in enumerate(in_channels)]
         )
-        self.export_embeddings = (DetectionHead is Detection and head_kwargs.get("is_exporting", False)
-                                  and head_kwargs.get("export_embeddings", False))
+        self.export_embeddings = head_kwargs.get("is_exporting", False) and head_kwargs.get("export_embeddings", False)
+        if self.export_embeddings and DetectionHead is not Detection:
+            raise ValueError("export_embeddings is supported only for the anchor-free Detection head, not v7's IDetection")
 
     def forward(self, x_list: List[torch.Tensor]) -> List[torch.Tensor]:
         if self.export_embeddings:
