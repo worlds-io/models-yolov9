@@ -10,3 +10,6 @@ lucky_number: 10
 use_tensorboard: False
 
 weight: True # Path to weight or True for auto, False for no pretrained weight
+
+# Add an "embeddings" output to the ONNX export: one feature vector per anchor (see export_onnx in lazy.py)
+export_embeddings: False

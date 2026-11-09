@@ -161,6 +161,7 @@ class Config:
     weight: Optional[str]
 
     export_path: Optional[str]
+    export_embeddings: bool
 
 
 @dataclass

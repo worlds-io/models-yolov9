@@ -28,6 +28,7 @@ class YOLO(nn.Module):
         self.model: List[YOLOLayer] = nn.ModuleList()
         self.reg_max = getattr(model_cfg.anchor, "reg_max", 16)
         self.is_exporting = getattr(model_cfg, "is_exporting", False)
+        self.export_embeddings = getattr(model_cfg, "export_embeddings", False)
         if cfg is not None:
             self.image_size = cfg.image_size
         else:
@@ -61,6 +62,8 @@ class YOLO(nn.Module):
                     layer_args["reg_max"] = self.reg_max
                     layer_args["is_exporting"] = self.is_exporting
                     layer_args["image_size"] = self.image_size
+                    if layer_type == "MultiheadDetection":
+                        layer_args["export_embeddings"] = self.export_embeddings
 
                 # create layers
                 layer = self.create_layer(layer_type, source, layer_info, **layer_args)

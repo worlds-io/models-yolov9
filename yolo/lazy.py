@@ -112,8 +112,22 @@ def export_onnx(cfg: Config):
     else:
         raise RuntimeError('Could not find state_dict in checkpoint after training completed')
 
-    cfg.model.is_exporting    = True
-    cfg.model.model.auxiliary = {}
+    # With export_embeddings, the export has a fourth output beside the three per-stride outputs (each
+    # [N, anchors at that stride, 4 + classes]):
+    #
+    #   embeddings [N, A, D]  one vector per anchor: the class branch's last hidden features at that anchor,
+    #                         the input of the 1x1 conv that produces its class logits. float32, not normalized.
+    #
+    # A is every stride's anchors together, finest stride first, each stride's anchors in the order of its own
+    # output, so the a-th anchor of the outputs taken finest first (most anchors first) is row a. D is the class
+    # branch's width (128 for v9-s, 240 for v9-m, 256 for v9-c), the same at every stride. The three outputs are
+    # computed exactly as without it. A consumer that keeps a detection's anchor through its own NMS can look
+    # its embedding up to compare, group or search detections without a second model.
+    export_embeddings = bool(cfg.get('export_embeddings', False))
+
+    cfg.model.is_exporting      = True
+    cfg.model.export_embeddings = export_embeddings
+    cfg.model.model.auxiliary   = {}
     export_model = create_model(cfg.model, cfg=cfg, class_num=cfg.dataset.class_num, weight_path=False).to('cpu')
 
     export_model_state_dict = {}
@@ -126,6 +140,10 @@ def export_onnx(cfg: Config):
     export_model.eval()
 
     dummy_input = torch.zeros((1, cfg.image_size[1], cfg.image_size[0], 3))
+    # Without embeddings only the first output is named, as it always was. With them, all four are named, so
+    # embeddings can be found by name and the other two outputs no longer take the exporter's numeric names.
+    output_names = ['output', 'output_1', 'output_2', 'embeddings'] if export_embeddings else ['output']
+    dynamic_axes = {'input': {0: 'batch_size'}, **{name: {0: 'batch_size'} for name in output_names}}
     torch.onnx.export(
         export_model,
         (dummy_input,),
@@ -133,8 +151,8 @@ def export_onnx(cfg: Config):
         export_params=True,
         do_constant_folding=True,
         input_names=['input'],
-        output_names=['output'],
-        dynamic_axes={'input': {0: 'batch_size'}, 'output': {0: 'batch_size'}},
+        output_names=output_names,
+        dynamic_axes=dynamic_axes,
         # torch >= 2.9 defaults to the torch.export-based exporter, which writes the weights to a
         # separate .onnx.data file beside export_path; only export_path is uploaded. Pin the
         # TorchScript exporter this graph was built and validated against, and the opset it

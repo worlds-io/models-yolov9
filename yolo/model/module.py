@@ -62,7 +62,8 @@ class Detection(nn.Module):
     """A single YOLO Detection head for detection models"""
 
     def __init__(self, in_channels: Tuple[int], num_classes: int, *, reg_max: int = 16, use_group: bool = True,
-                 is_exporting: bool = False, head_index: int = -1, image_size: tuple[int, int] = (640, 640)):
+                 is_exporting: bool = False, head_index: int = -1, image_size: tuple[int, int] = (640, 640),
+                 export_embeddings: bool = False):
         super().__init__()
 
         groups = 4 if use_group else 1
@@ -96,6 +97,16 @@ class Detection(nn.Module):
             cfg = AnchorConfig(strides, None, None, None)
             self.converter = Vec2Box(None, cfg, image_size, 'cpu')
 
+        # An embedding per anchor: the class branch's last hidden features, the input of the 1x1 conv that
+        # produces the class logits, read with a hook so the class branch itself is unchanged.
+        self.export_embeddings = self.is_exporting and export_embeddings
+        self.class_hidden = None
+        if self.export_embeddings:
+            self.class_conv[-2].register_forward_hook(self._keep_class_hidden)
+
+    def _keep_class_hidden(self, module: nn.Module, inputs: Tuple[Tensor], output: Tensor) -> None:
+        self.class_hidden = output
+
     def forward(self, x: Tensor) -> Tuple[Tensor, Tensor, Tensor] | Tensor:
         anchor_x = self.anchor_conv(x)
         class_x = self.class_conv(x)
@@ -106,6 +117,12 @@ class Detection(nn.Module):
             pred_class = pred_class.sigmoid()
 
             output = torch.concat([pred_bbox, pred_class], axis=2)
+
+            if self.export_embeddings:
+                # [B, h*w, D], in the same anchor order as output
+                embeddings = rearrange(self.class_hidden, "B C h w -> B (h w) C")
+                self.class_hidden = None
+                return output, embeddings
 
             return output
         else:
@@ -147,8 +164,17 @@ class MultiheadDetection(nn.Module):
         self.heads = nn.ModuleList(
             [DetectionHead((in_channels[0], in_channel), num_classes, head_index=i, image_size=image_size, **head_kwargs) for i, in_channel in enumerate(in_channels)]
         )
+        self.export_embeddings = (DetectionHead is Detection and head_kwargs.get("is_exporting", False)
+                                  and head_kwargs.get("export_embeddings", False))
 
     def forward(self, x_list: List[torch.Tensor]) -> List[torch.Tensor]:
+        if self.export_embeddings:
+            # one output per head as without embeddings, then every head's embeddings concatenated along the
+            # anchor dimension, finest stride first: row a of embeddings is anchor a of the heads' outputs
+            # taken in the same order
+            outputs, embeddings = zip(*(head(x) for x, head in zip(x_list, self.heads)))
+            return [*outputs, torch.cat(embeddings, dim=1)]
+
         return [head(x) for x, head in zip(x_list, self.heads)]
 
 
