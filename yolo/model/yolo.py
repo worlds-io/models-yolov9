@@ -64,6 +64,8 @@ class YOLO(nn.Module):
                     layer_args["image_size"] = self.image_size
                     if layer_type == "MultiheadDetection":
                         layer_args["export_embeddings"] = self.export_embeddings
+                    elif self.is_exporting and self.export_embeddings:
+                        raise ValueError(f"export_embeddings is supported only for detection models, not {layer_type}")
 
                 # create layers
                 layer = self.create_layer(layer_type, source, layer_info, **layer_args)
