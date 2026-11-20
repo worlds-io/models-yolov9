@@ -1,0 +1,69 @@
+name: CodeQL
+
+# Advanced setup, replacing CodeQL default setup. Default setup does not analyze pull requests whose
+# commits are all from Dependabot, so those PRs never get a CodeQL result and the pr-checks
+# ruleset's code_scanning rule blocks them until a human pushes a commit. A checked-in
+# pull_request workflow runs on Dependabot PRs too. One job per language that default setup
+# analyzed: the categories (/language:<lang>) match, so alert history and the PR comparison against
+# main carry over, and no configuration goes missing on PRs.
+#
+# Standalone rather than calling worlds-io/github-actions' CodeQL workflow: this repo is public and
+# can't call a private repo's reusable workflow.
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  schedule:
+    - cron: '52 12 * * 1'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  actions:
+    name: CodeQL (actions)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write  # upload results to code scanning
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          languages: actions
+          build-mode: none
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          category: /language:actions
+
+  python:
+    name: CodeQL (python)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write  # upload results to code scanning
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          languages: python
+          build-mode: none
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          category: /language:python
